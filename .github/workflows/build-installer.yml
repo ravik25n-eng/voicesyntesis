@@ -1,0 +1,56 @@
+name: Build Windows Installer
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm install
+          npm run build
+
+      - name: Compile Inno Setup installer
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\setup.iss
+
+      - name: Upload installer as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceModulation-Setup
+          path: installer\dist\VoiceModulation-Setup.exe
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: installer\dist\VoiceModulation-Setup.exe
+          body: |
+            ## VoiceModulation Windows Installer
+
+            ### Installation
+            1. Download `VoiceModulation-Setup.exe` below
+            2. Run it — no admin rights needed
+            3. During setup, check **"Download AI Models"** to pre-download Whisper + F5-TTS (~4.5 GB)
+            4. Double-click the **VoiceModulation** shortcut on your Desktop to start
+
+            ### Requirements
+            - Windows 10/11
+            - Fast internet connection (for first-time model downloads)
+            - ~10 GB free disk space

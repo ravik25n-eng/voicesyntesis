@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+.eggs/
+
+# Model weights & runtime data
+backend/recordings/
+backend/outputs/
+models/
+
+# Node / React
+frontend/node_modules/
+frontend/dist/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
