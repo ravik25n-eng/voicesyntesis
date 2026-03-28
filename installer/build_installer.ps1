@@ -44,7 +44,8 @@ Info "npm     : $(npm --version)"
 $isccExe = $null
 $isccCandidates = @(
     "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
-    "C:\Program Files\Inno Setup 6\ISCC.exe"
+    "C:\Program Files\Inno Setup 6\ISCC.exe",
+    "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
 )
 # Also check if ISCC is on PATH (e.g. via scoop or chocolatey)
 $isccOnPath = Get-Command ISCC -ErrorAction SilentlyContinue

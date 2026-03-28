@@ -28,19 +28,17 @@ WizardStyle=modern
 DisableProgramGroupPage=yes
 ; Require Windows 10 or later
 MinVersion=10.0.17763
-; Show a welcoming wizard page
-WizardResizable=no
 SetupLogging=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Components]
-Name: "app";    Description: "VoiceSyntesis application (required){break}Installs: Python 3.11, Node.js LTS, FFmpeg, Ollama, PyTorch, FastAPI, faster-whisper, F5-TTS"; Types: full compact custom; Flags: fixed
-Name: "models"; Description: "Download AI models during install — Whisper large-v3 + F5-TTS (~4.5 GB){break}Recommended if you have a fast internet connection. Otherwise models{break}download automatically on first use (may take 10-30 min)."; Types: full
+Name: "app";    Description: "VoiceSyntesis application (required) — Installs Python 3.11, Node.js LTS, FFmpeg, Ollama, PyTorch, FastAPI, faster-whisper, F5-TTS"; Types: full compact custom; Flags: fixed
+Name: "models"; Description: "Download AI models during install — Whisper large-v3 + F5-TTS (~4.5 GB). Recommended on a fast connection; otherwise models download on first use."; Types: full
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional icons:"; Flags: checked
+Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional icons:"
 
 [Files]
 ; ── Backend Python source ───────────────────────────────────────────────────
@@ -88,7 +86,7 @@ Type: filesandordirs; Name: "{app}\backend\projects"
 { Return -DownloadModels flag when the models component is selected }
 function GetModelsFlag(Param: String): String;
 begin
-  if IsComponentSelected('models') then
+  if WizardIsComponentSelected('models') then
     Result := '-DownloadModels'
   else
     Result := '';
