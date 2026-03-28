@@ -12,6 +12,9 @@ backend/recordings/
 backend/outputs/
 models/
 
+# User project data (voice recordings, synthesized audio — keep private)
+backend/projects/
+
 # Node / React
 frontend/node_modules/
 frontend/dist/
