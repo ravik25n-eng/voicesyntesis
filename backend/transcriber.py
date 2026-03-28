@@ -1,11 +1,15 @@
 """
 Whisper-based transcription using faster-whisper.
 Model is loaded once and reused across requests.
-Uses 'large-v3' for best accuracy on M-series Macs (runs on CPU with int8 — fast).
+Uses 'large-v3' for best accuracy on M-series Macs (runs on CPU with int8 -- fast).
 """
 
+import os
 import threading
 from pathlib import Path
+
+# Suppress HuggingFace symlink warning on Windows (cache still works, just no symlinks)
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
 from faster_whisper import WhisperModel
 

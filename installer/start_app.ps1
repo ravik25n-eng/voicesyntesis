@@ -11,6 +11,9 @@ $AppDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $AppDir
 $Host.UI.RawUI.WindowTitle = "VoiceSyntesis"
 
+# Suppress HuggingFace symlink warning on Windows (cache works fine without symlinks)
+$env:HF_HUB_DISABLE_SYMLINKS_WARNING = "1"
+
 function Info { param($m) Write-Host "[VoiceSyntesis] $m" -ForegroundColor Green }
 function Warn { param($m) Write-Host "[VoiceSyntesis] WARNING: $m" -ForegroundColor Yellow }
 function Err  { param($m) Write-Host "[VoiceSyntesis] ERROR: $m" -ForegroundColor Red }

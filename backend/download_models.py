@@ -1,6 +1,9 @@
 import sys
 import os
 
+# Suppress HuggingFace symlink warning on Windows
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+
 sys.path.insert(0, os.path.dirname(__file__))
 
 
