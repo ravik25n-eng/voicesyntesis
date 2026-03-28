@@ -34,9 +34,9 @@ Name: "{userprograms}\VoiceModulation\Uninstall VoiceModulation"; Filename: "{un
 
 [Run]
 Filename: "powershell.exe"; \
-  Parameters: "-ExecutionPolicy Bypass -NoProfile -File ""{app}\install_deps.ps1"" -InstallDir ""{app}"" {code:GetModelsFlag}"; \
-  StatusMsg: "Installing dependencies — this takes several minutes, please wait..."; \
-  Flags: runhidden waituntilterminated; \
+  Parameters: "-ExecutionPolicy Bypass -NoProfile -WindowStyle Normal -File ""{app}\install_deps.ps1"" -InstallDir ""{app}"" {code:GetModelsFlag}"; \
+  StatusMsg: "Installing dependencies — a PowerShell window will open, please wait and do not close it..."; \
+  Flags: waituntilterminated; \
   Components: app
 
 [UninstallDelete]
