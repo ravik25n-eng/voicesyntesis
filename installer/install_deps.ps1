@@ -337,28 +337,75 @@ $hasCuda = $null -ne (Get-Command "nvidia-smi" -ErrorAction SilentlyContinue)
 $torchVariant = if ($hasCuda) { "CUDA 12.1 (NVIDIA GPU)" } else { "CPU (no NVIDIA GPU found)" }
 Start-Step "PyTorch -- $torchVariant" "Deep learning framework (large download: ~2-3 GB)"
 
-if ($hasCuda) {
-    Info "NVIDIA GPU confirmed -- installing PyTorch with CUDA 12.1 support ..."
-    & $pipExe install torch torchvision torchaudio `
-        --index-url https://download.pytorch.org/whl/cu121
+# Check if torch is already installed in the venv before re-downloading
+$torchCheck = & $venvPython -c "import torch; print(torch.__version__)" 2>$null
+if ($LASTEXITCODE -eq 0 -and $torchCheck) {
+    Ok "PyTorch already installed: v$($torchCheck.Trim()) -- skipping."
 } else {
-    Info "No NVIDIA GPU -- installing PyTorch CPU build ..."
-    Info "(Voice synthesis will work but be slower. Expect ~3-10 min per clip.)"
-    & $pipExe install torch torchvision torchaudio
+    if ($hasCuda) {
+        Info "NVIDIA GPU confirmed -- installing PyTorch with CUDA 12.1 support ..."
+        $pipOut = & $pipExe install torch torchvision torchaudio `
+            --index-url https://download.pytorch.org/whl/cu121 2>&1
+    } else {
+        Info "No NVIDIA GPU -- installing PyTorch CPU build ..."
+        Info "(Voice synthesis will work but be slower. Expect ~3-10 min per clip.)"
+        $pipOut = & $pipExe install torch torchvision torchaudio 2>&1
+    }
+    $pipExit = $LASTEXITCODE
+    $pipOut | ForEach-Object { Add-Content -Path $logFile -Value "  [pip] $_" -ErrorAction SilentlyContinue; Write-Host "  $_" }
+    if ($pipExit -ne 0) { Abort "PyTorch installation failed. Check install.log." }
+    Ok "PyTorch installed."
 }
-if ($LASTEXITCODE -ne 0) { Abort "PyTorch installation failed. Check install.log." }
-Finish-Step "PyTorch installed"
+Finish-Step "PyTorch ready"
 
 # ===========================================================================
 # STEP 7 -- PYTHON PACKAGES
 # ===========================================================================
 Start-Step "Python application packages" "FastAPI, faster-whisper, Coqui TTS XTTS v2, pydub, uvicorn (~600 MB)"
 
-Info "Installing from backend\requirements.txt ..."
-Info "(This may take 5-15 minutes -- please wait)"
-& $pipExe install -r (Join-Path $InstallDir "backend\requirements.txt")
-if ($LASTEXITCODE -ne 0) { Abort "pip install -r requirements.txt failed. Check install.log." }
-Finish-Step "All Python packages installed"
+# Helper: extract bare package name from a requirement spec like "fastapi>=0.110.0" or "uvicorn[standard]>=0.27.0"
+function Get-PackageName {
+    param([string]$Req)
+    return ($Req -replace '\[.*?\]', '' -replace '[><=!;#@\s].*', '').Trim()
+}
+
+$reqFile = Join-Path $InstallDir "backend\requirements.txt"
+$requirements = Get-Content $reqFile |
+    Where-Object { $_ -match '\S' -and $_ -notmatch '^\s*#' }
+
+# Tally what is already installed vs what needs installing
+$toInstall = [System.Collections.Generic.List[string]]::new()
+foreach ($req in $requirements) {
+    $pkgName = Get-PackageName $req
+    $showOut  = & $pipExe show $pkgName 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        $ver = ($showOut | Select-String "^Version:") -replace "Version:\s*", ""
+        Ok "  Already installed: $pkgName $ver -- skipping."
+        Add-Content -Path $logFile -Value "  [skip] $pkgName $ver already present" -ErrorAction SilentlyContinue
+    } else {
+        Info "  Queued for install: $req"
+        $toInstall.Add($req)
+    }
+}
+
+if ($toInstall.Count -eq 0) {
+    Ok "All packages already installed -- nothing to do."
+} else {
+    Info "$($toInstall.Count) package(s) to install."
+    foreach ($pkg in $toInstall) {
+        $pkgName = Get-PackageName $pkg
+        Info "  Installing: $pkgName ..."
+        Add-Content -Path $logFile -Value "  [install] $pkgName" -ErrorAction SilentlyContinue
+        $pipOut  = & $pipExe install $pkg 2>&1
+        $pipExit = $LASTEXITCODE
+        $pipOut | ForEach-Object { Add-Content -Path $logFile -Value "    [pip] $_" -ErrorAction SilentlyContinue; Write-Host "    $_" }
+        if ($pipExit -ne 0) {
+            Abort "Failed to install: $pkgName.  Check install.log for details."
+        }
+        Ok "  Installed: $pkgName"
+    }
+}
+Finish-Step "All Python packages ready"
 
 # ===========================================================================
 # STEP 8 -- OLLAMA MISTRAL MODEL
