@@ -1,6 +1,6 @@
 """
 FastAPI backend for VoiceModulation POC.
-Serves audio upload, Whisper transcription, Ollama correction, and F5-TTS voice synthesis.
+Serves audio upload, Whisper transcription, Ollama correction, and Coqui XTTS v2 voice synthesis.
 """
 
 import asyncio

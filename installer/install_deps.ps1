@@ -8,9 +8,9 @@
       - FFmpeg             (audio conversion)
       - Ollama             (local LLM service)
       - PyTorch            (CPU build, or CUDA if NVIDIA GPU detected)
-      - Python packages    (FastAPI, faster-whisper, f5-tts, etc.)
+      - Python packages    (FastAPI, faster-whisper, Coqui TTS XTTS v2, etc.)
       - Ollama mistral     (transcript-correction model, ~4 GB)
-      - Whisper + F5-TTS   (AI models, ~4.5 GB, optional)
+      - Whisper + XTTS v2 (AI models, ~4.8 GB, optional)
 
     Uses winget when available; falls back to direct downloads from official
     sources so it works on a completely fresh Windows PC.
@@ -352,7 +352,7 @@ Finish-Step "PyTorch installed"
 # ===========================================================================
 # STEP 7 -- PYTHON PACKAGES
 # ===========================================================================
-Start-Step "Python application packages" "FastAPI, faster-whisper, f5-tts, pydub, uvicorn (~500 MB)"
+Start-Step "Python application packages" "FastAPI, faster-whisper, Coqui TTS XTTS v2, pydub, uvicorn (~600 MB)"
 
 Info "Installing from backend\requirements.txt ..."
 Info "(This may take 5-15 minutes -- please wait)"
@@ -408,9 +408,9 @@ Finish-Step "Ollama mistral ready"
 # STEP 9 -- AI MODELS (optional)
 # ===========================================================================
 if ($DownloadModels) {
-    Start-Step "AI Models -- Whisper large-v3 + F5-TTS" "Speech recognition and voice synthesis models (~4.5 GB)"
+    Start-Step "AI Models -- Whisper large-v3 + Coqui XTTS v2" "Speech recognition and voice synthesis models (~4.8 GB)"
 
-    Info "Downloading Whisper large-v3 (~3 GB) and F5-TTS (~1.5 GB) ..."
+    Info "Downloading Whisper large-v3 (~3 GB) and Coqui XTTS v2 (~1.8 GB) ..."
     Info "This may take 10-30 minutes -- please wait."
     & $venvPython (Join-Path $InstallDir "backend\download_models.py")
     if ($LASTEXITCODE -ne 0) {
@@ -421,7 +421,7 @@ if ($DownloadModels) {
     Finish-Step "AI models ready"
 } else {
     Write-Host ""
-    Info "AI models (Whisper + F5-TTS) will download automatically on first use."
+    Info "AI models (Whisper + Coqui XTTS v2) will download automatically on first use."
     Info "Expect a 10-30 min wait the first time you transcribe or synthesise."
 }
 

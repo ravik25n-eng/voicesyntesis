@@ -11,25 +11,20 @@ def download_whisper():
     print("[models] Whisper large-v3 ready.")
 
 
-def download_f5tts():
-    print("[models] Downloading F5-TTS model (~1.5 GB)...")
+def download_xtts():
+    print("[models] Downloading Coqui XTTS v2 model (~1.8 GB)...")
+    import os
     import torch
-
-    def _detect_device():
-        if torch.cuda.is_available():
-            return "cuda"
-        if torch.backends.mps.is_available():
-            return "mps"
-        return "cpu"
-
-    from f5_tts.api import F5TTS
-    F5TTS(device=_detect_device())
-    print("[models] F5-TTS model ready.")
+    os.environ["COQUI_TOS_AGREED"] = "1"
+    from TTS.api import TTS
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
+    print("[models] XTTS v2 model ready.")
 
 
 if __name__ == "__main__":
-    print("\n── Downloading ML models (first-time only) ──")
+    print("\n-- Downloading ML models (first-time only) --")
     print("This may take 10-20 minutes depending on your internet speed.\n")
     download_whisper()
-    download_f5tts()
+    download_xtts()
     print("\n[models] All models downloaded and cached.")
