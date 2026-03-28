@@ -19,7 +19,7 @@ $packages = @(
     @{ Id = "Ollama.Ollama";      Name = "Ollama" }
 )
 foreach ($pkg in $packages) {
-    $installed = winget list --id $pkg.Id 2>$null | Select-String $pkg.Id
+    $installed = winget list --id $pkg.Id 2>&1 | Select-String $pkg.Id
     if ($installed) {
         Info "$($pkg.Name) already installed"
     } else {
@@ -40,14 +40,14 @@ python -m pip install --upgrade pip -q
 
 $hasCuda = Get-Command "nvidia-smi" -ErrorAction SilentlyContinue
 if ($hasCuda) {
-    Info "NVIDIA GPU detected — installing PyTorch CUDA build"
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 -q
+    Info "NVIDIA GPU detected - installing PyTorch CUDA build"
+    python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 -q
 } else {
-    Info "No GPU detected — installing PyTorch CPU build (synthesis will be slower)"
-    pip install torch torchvision torchaudio -q
+    Info "No GPU detected - installing PyTorch CPU build (synthesis will be slower)"
+    python -m pip install torch torchvision torchaudio -q
 }
 
-pip install -r backend\requirements.txt
+python -m pip install -r backend\requirements.txt
 
 Section "Ollama model (mistral)"
 $ollamaProc = Start-Process ollama -ArgumentList "serve" -PassThru -WindowStyle Hidden
@@ -56,7 +56,7 @@ ollama pull mistral
 Stop-Process -Id $ollamaProc.Id -Force -ErrorAction SilentlyContinue
 
 if ($DownloadModels) {
-    Section "AI Models — Whisper + F5-TTS (~4.5 GB)"
+    Section "AI Models - Whisper + F5-TTS (~4.5 GB)"
     python backend\download_models.py
 }
 
