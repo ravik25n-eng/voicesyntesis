@@ -531,9 +531,10 @@ if ($verExit -ne 0) {
     $failedPkgs = ($failLine -replace '.*VERIFY_FAILED:', '').Trim() -split ','
 
     # Auto-fix: numpy version conflict (TTS 0.22.0 pins numpy<1.24 but faster-whisper needs >=1.24)
+    # numpy 2.x dropped numpy.core which TTS/faster-whisper depend on, so cap at <2.0.0
     if ($failedPkgs -contains 'numpy') {
-        Warn "numpy version conflict detected -- TTS downgraded it. Reinstalling numpy>=1.24.0 ..."
-        $fixOut = & $pipExe install "numpy>=1.24.0" --force-reinstall 2>&1
+        Warn "numpy version conflict detected -- reinstalling numpy>=1.24.0,<2.0.0 ..."
+        $fixOut = & $pipExe install "numpy>=1.24.0,<2.0.0" --force-reinstall 2>&1
         $fixExit = $LASTEXITCODE
         $fixOut | ForEach-Object { Add-Content -Path $logFile -Value "  [fix-numpy] $_" -ErrorAction SilentlyContinue }
         if ($fixExit -eq 0) {
