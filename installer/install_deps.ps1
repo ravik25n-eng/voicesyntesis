@@ -584,13 +584,28 @@ Write-Host ""
 # ---------------------------------------------------------------------------
 $launchBat = Join-Path $InstallDir "launch.bat"
 if (Test-Path $launchBat) {
-    Info "Starting VoiceSyntesis ..."
+    Info "Starting VoiceSyntesis (this may take up to 30 seconds) ..."
     Start-Process "cmd.exe" -ArgumentList "/c `"$launchBat`"" -WindowStyle Normal
-    # Give the backend a few seconds to start, then open the browser
-    Start-Sleep -Seconds 6
-    Start-Process "http://localhost:8000"
-    Info "Browser opened at http://localhost:8000"
-    Add-Content -Path $logFile -Value "  [launch] App launched and browser opened."
+    # Poll port 8000 until the backend is accepting connections (up to 40 s)
+    $backendReady = $false
+    for ($i = 0; $i -lt 20; $i++) {
+        Start-Sleep -Seconds 2
+        try {
+            $tcp = New-Object System.Net.Sockets.TcpClient
+            $tcp.Connect("127.0.0.1", 8000)
+            $tcp.Close()
+            $backendReady = $true
+            break
+        } catch {}
+    }
+    if ($backendReady) {
+        Start-Process "http://localhost:8000"
+        Info "Browser opened at http://localhost:8000"
+        Add-Content -Path $logFile -Value "  [launch] App launched and browser opened." -ErrorAction SilentlyContinue
+    } else {
+        Warn "Backend did not respond after 40 seconds -- open http://localhost:8000 manually."
+        Add-Content -Path $logFile -Value "  [launch] Backend did not respond in time." -ErrorAction SilentlyContinue
+    }
 } else {
     Warn "launch.bat not found -- use the Desktop shortcut to start the app."
 }
