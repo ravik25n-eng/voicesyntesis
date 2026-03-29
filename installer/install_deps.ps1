@@ -482,16 +482,18 @@ import sys, importlib
 
 results = []
 
-def check(pkg, import_name=None, min_ver=None):
+def check(pkg, import_name=None, min_ver=None, max_ver=None):
     name = import_name or pkg
     try:
         mod = importlib.import_module(name)
         ver = getattr(mod, "__version__", "?")
-        if min_ver:
-            from packaging.version import Version
-            if Version(ver) < Version(min_ver):
-                results.append(("FAIL", pkg, f"version {ver} < required {min_ver}"))
-                return
+        from packaging.version import Version
+        if min_ver and Version(ver) < Version(min_ver):
+            results.append(("FAIL", pkg, f"version {ver} < required {min_ver}"))
+            return
+        if max_ver and Version(ver) >= Version(max_ver):
+            results.append(("FAIL", pkg, f"version {ver} >= max allowed {max_ver}"))
+            return
         results.append(("OK", pkg, f"v{ver}"))
     except Exception as e:
         results.append(("FAIL", pkg, str(e)))
@@ -502,6 +504,7 @@ check("numpy", min_ver="1.24.0")
 check("torch")
 check("faster_whisper", import_name="faster_whisper")
 check("TTS", import_name="TTS")
+check("transformers", min_ver="4.33.0", max_ver="4.40.0")
 check("pydub")
 check("aiofiles")
 check("ollama")
@@ -530,21 +533,36 @@ if ($verExit -ne 0) {
     $failLine = $verOut | Where-Object { $_ -match '^\s*VERIFY_FAILED:' }
     $failedPkgs = ($failLine -replace '.*VERIFY_FAILED:', '').Trim() -split ','
 
-    # Auto-fix: numpy version conflict (TTS 0.22.0 pins numpy<1.24 but faster-whisper needs >=1.24)
-    # numpy 2.x dropped numpy.core which TTS/faster-whisper depend on, so cap at <2.0.0
+    # Auto-fix: transformers too new (>=4.40 removed BeamSearchScorer used by TTS)
+    # Must run BEFORE numpy fix because transformers install can pull in numpy 2.x
+    if ($failedPkgs -contains 'transformers') {
+        Warn "transformers version incompatible -- reinstalling transformers>=4.33.0,<4.40.0 ..."
+        $fixOut = & $pipExe install "transformers>=4.33.0,<4.40.0" --force-reinstall 2>&1
+        $fixExit = $LASTEXITCODE
+        $fixOut | ForEach-Object { Add-Content -Path $logFile -Value "  [fix-transformers] $_" -ErrorAction SilentlyContinue }
+        if ($fixExit -ne 0) { Warn "transformers reinstall failed -- check install.log." }
+    }
+
+    # Auto-fix: numpy version conflict (always run AFTER transformers to re-pin if transformers pulled numpy 2.x)
     if ($failedPkgs -contains 'numpy') {
         Warn "numpy version conflict detected -- reinstalling numpy>=1.24.0,<2.0.0 ..."
         $fixOut = & $pipExe install "numpy>=1.24.0,<2.0.0" --force-reinstall 2>&1
         $fixExit = $LASTEXITCODE
         $fixOut | ForEach-Object { Add-Content -Path $logFile -Value "  [fix-numpy] $_" -ErrorAction SilentlyContinue }
-        if ($fixExit -eq 0) {
-            Ok "numpy reinstalled. Re-running verification ..."
-            $verOut2 = & $venvPython $verifyFile 2>&1
-            $verExit = $LASTEXITCODE
-            $verOut2 | ForEach-Object { Add-Content -Path $logFile -Value "  [verify2] $_" -ErrorAction SilentlyContinue; Write-Host "  $_" }
-        } else {
-            Warn "numpy reinstall failed -- check install.log."
-        }
+        if ($fixExit -ne 0) { Warn "numpy reinstall failed -- check install.log." }
+    } elseif ($failedPkgs -contains 'transformers') {
+        # transformers may have upgraded numpy to 2.x even if numpy wasn't failing before -- re-pin
+        $fixOut = & $pipExe install "numpy>=1.24.0,<2.0.0" --force-reinstall 2>&1
+        $fixExit = $LASTEXITCODE
+        $fixOut | ForEach-Object { Add-Content -Path $logFile -Value "  [fix-numpy-after-transformers] $_" -ErrorAction SilentlyContinue }
+    }
+
+    # Re-run verification if any auto-fix was applied
+    if (($failedPkgs -contains 'numpy') -or ($failedPkgs -contains 'transformers')) {
+        Ok "Re-running verification after auto-fix ..."
+        $verOut2 = & $venvPython $verifyFile 2>&1
+        $verExit = $LASTEXITCODE
+        $verOut2 | ForEach-Object { Add-Content -Path $logFile -Value "  [verify2] $_" -ErrorAction SilentlyContinue; Write-Host "  $_" }
     }
 
     # Report any remaining failures
