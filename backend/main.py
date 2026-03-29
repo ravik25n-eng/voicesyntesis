@@ -55,11 +55,7 @@ app.add_middleware(
 # Static file serving for audio playback in the browser
 app.mount("/project-files", StaticFiles(directory=str(PROJECTS_DIR)), name="project-files")
 
-# Serve pre-built frontend when running as installed app (no Vite/Node needed).
-# Only mounted when frontend/dist exists — dev mode with Vite is unaffected.
 _frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
-if _frontend_dist.exists():
-    app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="frontend")
 
 
 # ── Request / Response models ────────────────────────────────────────────────
@@ -311,3 +307,9 @@ async def delete_project_endpoint(project_id: str):
     except Exception as exc:
         logger.error("Project deletion failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+# ── Frontend static files (must be mounted LAST so API routes take priority) ──
+# Only mounted when frontend/dist exists — dev mode with Vite is unaffected.
+if _frontend_dist.exists():
+    app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="frontend")
