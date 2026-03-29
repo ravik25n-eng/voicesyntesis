@@ -221,6 +221,18 @@ def _get_tts(status_callback: Callable | None = None):
                 # Accept Coqui TOS non-interactively (required in server context)
                 os.environ["COQUI_TOS_AGREED"] = "1"
 
+                # PyTorch 2.6+ changed torch.load default to weights_only=True.
+                # Coqui XTTS v2 checkpoints contain custom classes that are not
+                # allowlisted by default, so we patch torch.load to keep the
+                # pre-2.6 behaviour for trusted local model files.
+                import functools
+                _original_torch_load = torch.load
+                @functools.wraps(_original_torch_load)
+                def _patched_torch_load(f, *args, **kwargs):
+                    kwargs.setdefault("weights_only", False)
+                    return _original_torch_load(f, *args, **kwargs)
+                torch.load = _patched_torch_load
+
                 from TTS.api import TTS  # deferred import to avoid slow startup
 
                 device = _detect_device()
