@@ -405,6 +405,18 @@ if ($toInstall.Count -eq 0) {
         Ok "  Installed: $pkgName"
     }
 }
+
+# Remove packages that must NOT be present (pulled in by transitive deps but incompatible)
+$unwanted = @("f5-tts", "torchcodec")
+foreach ($pkg in $unwanted) {
+    $showOut = & $pipExe show $pkg 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        Info "Removing incompatible package: $pkg ..."
+        & $pipExe uninstall $pkg -y 2>&1 | ForEach-Object { Add-Content -Path $logFile -Value "  [uninstall] $_" -ErrorAction SilentlyContinue }
+        Ok "Removed: $pkg"
+    }
+}
+
 Finish-Step "All Python packages ready"
 
 # ===========================================================================
