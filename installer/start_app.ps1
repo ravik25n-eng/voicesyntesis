@@ -72,8 +72,7 @@ try {
 } catch {}
 
 if ($portInUse) {
-    Warn "Port 8000 is already in use -- opening the existing instance."
-    Start-Process "http://localhost:8000"
+    Info "Port 8000 is already in use -- VoiceSyntesis is already running."
     exit 0
 }
 
@@ -103,8 +102,7 @@ for ($i = 0; $i -lt 15; $i++) {
 }
 
 if ($backendReady) {
-    Info "Backend ready -- opening browser at http://localhost:8000"
-    Start-Process "http://localhost:8000"
+    Info "Backend ready at http://localhost:8000"
 } else {
     Warn "Backend did not respond after 30 seconds."
     Warn "Check this window for error messages. You can try http://localhost:8000 manually."

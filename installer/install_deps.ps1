@@ -599,9 +599,8 @@ if (Test-Path $launchBat) {
         } catch {}
     }
     if ($backendReady) {
-        Start-Process "http://localhost:8000"
-        Info "Browser opened at http://localhost:8000"
-        Add-Content -Path $logFile -Value "  [launch] App launched and browser opened." -ErrorAction SilentlyContinue
+        Info "App is running at http://localhost:8000"
+        Add-Content -Path $logFile -Value "  [launch] App launched successfully." -ErrorAction SilentlyContinue
     } else {
         Warn "Backend did not respond after 40 seconds -- open http://localhost:8000 manually."
         Add-Content -Path $logFile -Value "  [launch] Backend did not respond in time." -ErrorAction SilentlyContinue
