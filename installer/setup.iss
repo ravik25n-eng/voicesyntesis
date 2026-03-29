@@ -72,7 +72,7 @@ Filename: "powershell.exe"; \
 ; Offer to launch immediately after install
 Filename: "{app}\launch.bat"; \
   Description: "Launch VoiceSyntesis now"; \
-  Flags: postinstall nowait skipifsilent unchecked; \
+  Flags: postinstall nowait skipifsilent; \
   WorkingDir: "{app}"; \
   Components: app
 

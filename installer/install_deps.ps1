@@ -573,8 +573,24 @@ Write-Host ""
 Write-Host "  [SUCCESS] VoiceSyntesis installation complete!" -ForegroundColor Green
 Write-Host ""
 Write-Host "  All $TOTAL_STEPS steps finished." -ForegroundColor Green
-Write-Host "  Double-click the VoiceSyntesis shortcut on your Desktop to start." -ForegroundColor Green
+Write-Host "  The app will launch automatically in a moment." -ForegroundColor Green
 Write-Host "  Log saved to: $logFile" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host ("=" * 70) -ForegroundColor Green
 Write-Host ""
+
+# ---------------------------------------------------------------------------
+# Launch the app now so the user doesn't have to find the shortcut
+# ---------------------------------------------------------------------------
+$launchBat = Join-Path $InstallDir "launch.bat"
+if (Test-Path $launchBat) {
+    Info "Starting VoiceSyntesis ..."
+    Start-Process "cmd.exe" -ArgumentList "/c `"$launchBat`"" -WindowStyle Normal
+    # Give the backend a few seconds to start, then open the browser
+    Start-Sleep -Seconds 6
+    Start-Process "http://localhost:8000"
+    Info "Browser opened at http://localhost:8000"
+    Add-Content -Path $logFile -Value "  [launch] App launched and browser opened."
+} else {
+    Warn "launch.bat not found -- use the Desktop shortcut to start the app."
+}
