@@ -20,6 +20,8 @@ DefaultDirName={localappdata}\VoiceSyntesis
 DefaultGroupName=VoiceSyntesis
 OutputDir=dist
 OutputBaseFilename=VoiceSyntesis-Setup
+SetupIconFile=app.ico
+UninstallDisplayIcon={app}\app.ico
 Compression=lzma2
 SolidCompression=yes
 ; No admin rights needed — everything installs per-user
@@ -51,12 +53,13 @@ Source: "..\frontend\dist\*"; DestDir: "{app}\frontend\dist"; Flags: recursesubd
 Source: "install_deps.ps1"; DestDir: "{app}"; Flags: ignoreversion; Components: app
 Source: "start_app.ps1";    DestDir: "{app}"; Flags: ignoreversion; Components: app
 Source: "launch.bat";       DestDir: "{app}"; Flags: ignoreversion; Components: app
+Source: "app.ico";           DestDir: "{app}"; Flags: ignoreversion; Components: app
 
 [Icons]
 ; Desktop shortcut
-Name: "{userdesktop}\VoiceSyntesis"; Filename: "{app}\launch.bat"; WorkingDir: "{app}"; Comment: "Start VoiceSyntesis"; Tasks: desktopicon
+Name: "{userdesktop}\VoiceSyntesis"; Filename: "{app}\launch.bat"; WorkingDir: "{app}"; IconFilename: "{app}\app.ico"; Comment: "Start VoiceSyntesis"; Tasks: desktopicon
 ; Start-menu entries
-Name: "{userprograms}\VoiceSyntesis\Launch VoiceSyntesis";    Filename: "{app}\launch.bat"; WorkingDir: "{app}"; Comment: "Start VoiceSyntesis"
+Name: "{userprograms}\VoiceSyntesis\Launch VoiceSyntesis";    Filename: "{app}\launch.bat"; WorkingDir: "{app}"; IconFilename: "{app}\app.ico"; Comment: "Start VoiceSyntesis"
 Name: "{userprograms}\VoiceSyntesis\Uninstall VoiceSyntesis"; Filename: "{uninstallexe}"
 
 [Run]
