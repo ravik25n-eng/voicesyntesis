@@ -19,6 +19,24 @@ from collections.abc import Callable
 from pathlib import Path
 
 import torch
+import torch.serialization
+
+# ---------------------------------------------------------------------------
+# PyTorch 2.6+ changed torch.load default to weights_only=True.
+# Coqui XTTS v2 checkpoints contain custom config classes (XttsConfig, etc.)
+# that are not in PyTorch's allowlist. Patch BOTH torch.load and
+# torch.serialization.load at import time (before any TTS code runs) to
+# restore the pre-2.6 behaviour for these trusted local model files.
+# ---------------------------------------------------------------------------
+_orig_torch_load = torch.serialization.load
+
+def _patched_torch_load(f, map_location=None, pickle_module=None, *, weights_only=False, **kwargs):
+    return _orig_torch_load(f, map_location=map_location, pickle_module=pickle_module,
+                            weights_only=weights_only, **kwargs)
+
+torch.serialization.load = _patched_torch_load
+torch.load = _patched_torch_load
+# ---------------------------------------------------------------------------
 
 from utils import get_project_output_path, get_project_recording_path
 
@@ -220,18 +238,6 @@ def _get_tts(status_callback: Callable | None = None):
 
                 # Accept Coqui TOS non-interactively (required in server context)
                 os.environ["COQUI_TOS_AGREED"] = "1"
-
-                # PyTorch 2.6+ changed torch.load default to weights_only=True.
-                # Coqui XTTS v2 checkpoints contain custom classes that are not
-                # allowlisted by default, so we patch torch.load to keep the
-                # pre-2.6 behaviour for trusted local model files.
-                import functools
-                _original_torch_load = torch.load
-                @functools.wraps(_original_torch_load)
-                def _patched_torch_load(f, *args, **kwargs):
-                    kwargs.setdefault("weights_only", False)
-                    return _original_torch_load(f, *args, **kwargs)
-                torch.load = _patched_torch_load
 
                 from TTS.api import TTS  # deferred import to avoid slow startup
 
