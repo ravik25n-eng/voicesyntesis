@@ -29,7 +29,7 @@ param(
 Set-Location $InstallDir
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$TOTAL_STEPS = if ($DownloadModels) { 9 } else { 8 }
+$TOTAL_STEPS = if ($DownloadModels) { 10 } else { 9 }
 $script:currentStep = 0
 $logFile  = Join-Path $InstallDir "install.log"
 $toolsDir = Join-Path $InstallDir "tools"
@@ -471,6 +471,94 @@ if ($DownloadModels) {
     Info "AI models (Whisper + Coqui XTTS v2) will download automatically on first use."
     Info "Expect a 10-30 min wait the first time you transcribe or synthesise."
 }
+
+# ===========================================================================
+# STEP (last) -- VERIFICATION
+# ===========================================================================
+Start-Step "Verification" "Confirming all packages import correctly and fixing any version conflicts"
+
+$verifyScript = @'
+import sys, importlib
+
+results = []
+
+def check(pkg, import_name=None, min_ver=None):
+    name = import_name or pkg
+    try:
+        mod = importlib.import_module(name)
+        ver = getattr(mod, "__version__", "?")
+        if min_ver:
+            from packaging.version import Version
+            if Version(ver) < Version(min_ver):
+                results.append(("FAIL", pkg, f"version {ver} < required {min_ver}"))
+                return
+        results.append(("OK", pkg, f"v{ver}"))
+    except Exception as e:
+        results.append(("FAIL", pkg, str(e)))
+
+check("fastapi")
+check("uvicorn")
+check("numpy", min_ver="1.24.0")
+check("torch")
+check("faster_whisper", import_name="faster_whisper")
+check("TTS", import_name="TTS")
+check("pydub")
+check("aiofiles")
+check("ollama")
+
+failed = [r for r in results if r[0] == "FAIL"]
+for status, pkg, detail in results:
+    tag = "[OK]  " if status == "OK" else "[FAIL]"
+    print(f"  {tag} {pkg}: {detail}")
+
+if failed:
+    print("\nVERIFY_FAILED:" + ",".join(p for _, p, _ in failed))
+    sys.exit(1)
+else:
+    print("\nVERIFY_OK")
+    sys.exit(0)
+'@
+
+$verifyFile = Join-Path $toolsDir "verify_imports.py"
+[System.IO.File]::WriteAllText($verifyFile, $verifyScript, [System.Text.Encoding]::UTF8)
+
+$verOut = & $venvPython $verifyFile 2>&1
+$verExit = $LASTEXITCODE
+$verOut | ForEach-Object { Add-Content -Path $logFile -Value "  [verify] $_" -ErrorAction SilentlyContinue; Write-Host "  $_" }
+
+if ($verExit -ne 0) {
+    $failLine = $verOut | Where-Object { $_ -match '^\s*VERIFY_FAILED:' }
+    $failedPkgs = ($failLine -replace '.*VERIFY_FAILED:', '').Trim() -split ','
+
+    # Auto-fix: numpy version conflict (TTS 0.22.0 pins numpy<1.24 but faster-whisper needs >=1.24)
+    if ($failedPkgs -contains 'numpy') {
+        Warn "numpy version conflict detected -- TTS downgraded it. Reinstalling numpy>=1.24.0 ..."
+        $fixOut = & $pipExe install "numpy>=1.24.0" --force-reinstall 2>&1
+        $fixExit = $LASTEXITCODE
+        $fixOut | ForEach-Object { Add-Content -Path $logFile -Value "  [fix-numpy] $_" -ErrorAction SilentlyContinue }
+        if ($fixExit -eq 0) {
+            Ok "numpy reinstalled. Re-running verification ..."
+            $verOut2 = & $venvPython $verifyFile 2>&1
+            $verExit = $LASTEXITCODE
+            $verOut2 | ForEach-Object { Add-Content -Path $logFile -Value "  [verify2] $_" -ErrorAction SilentlyContinue; Write-Host "  $_" }
+        } else {
+            Warn "numpy reinstall failed -- check install.log."
+        }
+    }
+
+    # Report any remaining failures
+    if ($verExit -ne 0) {
+        Warn "One or more packages failed verification. Check install.log for details."
+        Warn "The app may still work -- these are importable checks only."
+    } else {
+        Ok "All packages verified after auto-fix."
+    }
+} else {
+    Ok "All packages verified successfully."
+}
+
+Remove-Item $verifyFile -Force -ErrorAction SilentlyContinue
+Finish-Step "Verification complete"
 
 Write-Progress -Activity "VoiceSyntesis Setup" -Status "Complete" -PercentComplete 100
 Start-Sleep -Milliseconds 500
