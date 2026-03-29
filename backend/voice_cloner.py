@@ -38,6 +38,34 @@ torch.serialization.load = _patched_torch_load
 torch.load = _patched_torch_load
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# torchaudio 2.9+ hardcoded torchaudio.load() to use torchcodec (ignores
+# the backend parameter entirely). Replace with soundfile-based load.
+# This is a belt-and-suspenders duplicate of the patch in main.py.
+# ---------------------------------------------------------------------------
+try:
+    import soundfile as _sf
+    import torchaudio as _ta
+    import numpy as _np
+
+    def _soundfile_load(uri, frame_offset=0, num_frames=-1, normalize=True,
+                        channels_first=True, **kwargs):
+        src = uri if hasattr(uri, "read") else str(uri)
+        data, samplerate = _sf.read(src, dtype="float32", always_2d=True)
+        if frame_offset > 0:
+            data = data[frame_offset:]
+        if num_frames > 0:
+            data = data[:num_frames]
+        arr = data.T if channels_first else data
+        return torch.from_numpy(_np.ascontiguousarray(arr)), samplerate
+
+    if not getattr(_ta.load, "_sf_patched", False):
+        _soundfile_load._sf_patched = True
+        _ta.load = _soundfile_load
+except Exception:
+    pass
+# ---------------------------------------------------------------------------
+
 from utils import get_project_output_path, get_project_recording_path
 
 

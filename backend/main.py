@@ -14,6 +14,35 @@ from pathlib import Path
 # regardless of the working directory uvicorn is launched from.
 sys.path.insert(0, os.path.dirname(__file__))
 
+# ---------------------------------------------------------------------------
+# torchaudio 2.9+ hardcoded torchaudio.load() to use torchcodec (ignores the
+# backend parameter entirely), which requires FFmpeg DLLs not available on
+# all Windows installs. Replace torchaudio.load with a soundfile-based
+# implementation BEFORE any project imports trigger audio loading.
+# ---------------------------------------------------------------------------
+try:
+    import numpy as _np
+    import soundfile as _sf
+    import torch as _torch
+    import torchaudio as _ta
+
+    def _soundfile_load(uri, frame_offset=0, num_frames=-1, normalize=True,
+                        channels_first=True, **kwargs):
+        """soundfile drop-in for torchaudio.load — avoids torchcodec/FFmpeg."""
+        src = uri if hasattr(uri, "read") else str(uri)
+        data, samplerate = _sf.read(src, dtype="float32", always_2d=True)
+        if frame_offset > 0:
+            data = data[frame_offset:]
+        if num_frames > 0:
+            data = data[:num_frames]
+        arr = data.T if channels_first else data
+        return _torch.from_numpy(_np.ascontiguousarray(arr)), samplerate
+
+    _ta.load = _soundfile_load
+except Exception:
+    pass
+# ---------------------------------------------------------------------------
+
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
